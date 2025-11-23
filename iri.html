@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ojo de Joya Geométrico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #ffffff;
+        }
+        canvas {
+            display: block;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+            padding: 10px 20px;
+            border-radius: 20px;
+            color: white;
+            font-family: sans-serif;
+            pointer-events: none;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="gemCanvas"></canvas>
+
+    <div id="controls">
+        Geometría facetada radial (Low Poly)
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gemCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Colores extraídos de las facetas de la imagen original
+        const facetColors = [
+            '#1e3a8a', // Azul oscuro profundo
+            '#3b82f6', // Azul brillante
+            '#172554', // Azul casi negro
+            '#60a5fa', // Azul claro
+            '#2563eb', // Azul medio
+            '#1d4ed8', // Azul rey
+        ];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        function draw() {
+            const w = canvas.width;
+            const h = canvas.height;
+            const centerX = w / 2;
+            const centerY = h / 2;
+            
+            // Ajuste del tamaño general
+            const size = Math.min(w, h) * 0.85;
+            const outerRadius = size / 2;
+            // El radio interior (donde empieza la pupila) define la longitud de los picos
+            const innerRadius = outerRadius * 0.55; 
+
+            ctx.clearRect(0, 0, w, h);
+
+            // --- 1. FONDO CIRCULAR (Base) ---
+            // Ajustado a blanco puro para limpieza visual
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, outerRadius, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff'; 
+            ctx.fill();
+
+            // --- 2. IRIS FACETADO (Malla de Triángulos) ---
+            // La imagen tiene aproximadamente 14-16 puntas principales.
+            const points = 14; 
+            const angleStep = (Math.PI * 2) / points;
+            
+            // Rotación inicial para alinear el pico superior como en la imagen
+            const rotationOffset = -Math.PI / 2;
+
+            // REINTENTO DE GEOMETRÍA EXACTA (ZIG-ZAG)
+            // Una joya se construye conectando puntos del anillo interior con el exterior
+            for (let i = 0; i < points; i++) {
+                const theta1 = (i * angleStep) + rotationOffset;
+                const theta2 = ((i + 1) * angleStep) + rotationOffset;
+
+                // Coordenadas polares
+                const ax = centerX + Math.cos(theta1) * outerRadius;
+                const ay = centerY + Math.sin(theta1) * outerRadius;
+                const bx = centerX + Math.cos(theta2) * outerRadius;
+                const by = centerY + Math.sin(theta2) * outerRadius;
+
+                const cx = centerX + Math.cos(theta1) * innerRadius;
+                const cy = centerY + Math.sin(theta1) * innerRadius;
+                const dx = centerX + Math.cos(theta2) * innerRadius;
+                const dy = centerY + Math.sin(theta2) * innerRadius;
+
+                // En la imagen, vemos dos tipos de triángulos principales formando el anillo:
+                
+                // Triángulo 1: Base afuera, punta adentro (Más oscuros generalmente)
+                ctx.beginPath();
+                ctx.moveTo(ax, ay);
+                ctx.lineTo(bx, by);
+                ctx.lineTo(dx, dy); // Conecta con el siguiente punto interior
+                ctx.closePath();
+                // Color: Usar tonos oscuros
+                ctx.fillStyle = facetColors[(i * 2) % facetColors.length]; 
+                ctx.fill();
+
+                // Triángulo 2: Base adentro, punta afuera (Más claros/brillantes)
+                ctx.beginPath();
+                ctx.moveTo(ax, ay);
+                ctx.lineTo(cx, cy);
+                ctx.lineTo(dx, dy);
+                ctx.closePath();
+                // Color: Usar tonos más claros
+                ctx.fillStyle = facetColors[((i * 2) + 1) % facetColors.length];
+                ctx.fill();
+            }
+
+            // --- 3. PUPILA (Círculo Negro Solido) ---
+            // Debe ser nítido y estar encima de las puntas de los triángulos
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, innerRadius - 1, 0, Math.PI * 2); // -1 para evitar bordes blancos
+            ctx.fillStyle = '#101010'; // Negro casi puro
+            ctx.fill();
+
+            // --- 4. EL BRILLO (Diamante Blanco) ---
+            // Está en la parte superior, girado 45 grados (rombo)
+            // Se superpone exactamente en el borde de la pupila a las 12 en punto
+            
+            const diamondSize = innerRadius * 0.35; 
+            // Posición Y: El centro del diamante está en el borde de la pupila
+            // Borde pupila = centerY - innerRadius
+            const diamondCenterX = centerX;
+            const diamondCenterY = centerY - innerRadius; 
+
+            ctx.beginPath();
+            ctx.moveTo(diamondCenterX, diamondCenterY - diamondSize); // Arriba
+            ctx.lineTo(diamondCenterX + diamondSize, diamondCenterY); // Derecha
+            ctx.lineTo(diamondCenterX, diamondCenterY + diamondSize); // Abajo
+            ctx.lineTo(diamondCenterX - diamondSize, diamondCenterY); // Izquierda
+            ctx.closePath();
+
+            ctx.fillStyle = '#ffffff';
+            // Un resplandor sutil pero contenido, como un reflejo nítido
+            ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            
+            // Reset shadow
+            ctx.shadowBlur = 0;
+        }
+
+        resizeCanvas();
+    </script>
+</body>
+</html>
